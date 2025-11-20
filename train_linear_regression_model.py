@@ -134,7 +134,7 @@ log_result("Keras LinReg Sim", y_test, pred_lr, prob_lr, epochs=3000)
 # Note: The extension is changed from .pkl to .h5 because Keras models do not reliably pickle.
 # The user's intent to use it later requires the proper Keras save format.
 
-model_filename = "train_linear_regression_model.h5"
+model_filename = "models/train_linear_regression_model.h5"
 
 try:
     model_lr.save(model_filename)
@@ -150,7 +150,7 @@ except Exception as e:
 # It is CRITICAL to save the scaler object as well, so incoming data in app.py can be scaled correctly.
 import pickle
 
-scaler_filename = "scaler.pkl"
+scaler_filename = "models/scaler.pkl"
 
 try:
     with open(scaler_filename, 'wb') as file:
