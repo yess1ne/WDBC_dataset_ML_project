@@ -1,0 +1,14 @@
+{
+  "model_name": "Keras Linear Classifier (WDBC Dataset)",
+  "data_points": 171,
+  "epochs": 3000,
+  "metrics": {
+    "Accuracy": 0.924,
+    "AUC (ROC Area)": 0.9893,
+    "FPR (False Positive Rate)": 0.0187,
+    "FNR (False Negative Rate)": 0.1719,
+    "TPR (True Positive Rate / Sensitivity)": 0.8281,
+    "TNR (True Negative Rate / Specificity)": 0.9813,
+    "Test Set Size": 171
+  }
+}

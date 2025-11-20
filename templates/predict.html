@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WDBC Prediction Form</title>
+    <!-- Load Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Custom scrollbar for aesthetics */
+        body::-webkit-scrollbar { width: 8px; }
+        body::-webkit-scrollbar-track { background: #f1f1f1; }
+        body::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        body::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen p-4 sm:p-8 font-sans">
+
+    <div class="max-w-6xl mx-auto">
+        <header class="mb-8">
+            <a href="/" class="text-indigo-600 hover:text-indigo-800 text-sm font-medium flex items-center mb-4">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                </svg>
+                Back to Dashboard
+            </a>
+            <h1 class="text-4xl font-extrabold text-gray-900 mb-2">Predict Diagnosis</h1>
+            <p class="text-xl text-gray-600">Input the 30 features of a cell nucleus to predict if the mass is Benign (0) or Malignant (1).</p>
+        </header>
+
+        <main class="bg-white p-6 sm:p-10 rounded-xl shadow-2xl">
+            <!-- Form for submission -->
+            <form id="prediction-form" method="POST" action="/predict_result">
+                
+                <!-- Randomizer Button and Submit Button -->
+                <div class="flex flex-col sm:flex-row gap-4 mb-8">
+                    <button type="button" onclick="randomizeInputs()" class="w-full sm:w-1/2 bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-3 px-6 rounded-lg transition duration-200 shadow-md">
+                        <span class="mr-2">🎲</span> Randomize Inputs
+                    </button>
+                    <button type="submit" class="w-full sm:w-1/2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-6 rounded-lg transition duration-200 shadow-lg">
+                        Analyze & Predict
+                    </button>
+                </div>
+
+                <!-- Input Grid for 30 Attributes -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                    
+                    <!-- GROUP 1: MEAN Values -->
+                    <div class="bg-indigo-50 p-6 rounded-lg shadow-inner">
+                        <h3 class="text-2xl font-semibold text-indigo-800 border-b pb-2 mb-4">I. Mean Characteristics</h3>
+                        <div class="space-y-4">
+                            <label class="block">Radius Mean: <input type="number" step="any" name="radius_mean" class="input-field" min="6.98" max="28.11"></label>
+                            <label class="block">Texture Mean: <input type="number" step="any" name="texture_mean" class="input-field" min="9.71" max="39.28"></label>
+                            <label class="block">Perimeter Mean: <input type="number" step="any" name="perimeter_mean" class="input-field" min="43.36" max="188.5"></label>
+                            <label class="block">Area Mean: <input type="number" step="any" name="area_mean" class="input-field" min="143.5" max="2501.0"></label>
+                            <label class="block">Smoothness Mean: <input type="number" step="any" name="smoothness_mean" class="input-field" min="0.052" max="0.163"></label>
+                            <label class="block">Compactness Mean: <input type="number" step="any" name="compactness_mean" class="input-field" min="0.019" max="0.345"></label>
+                            <label class="block">Concavity Mean: <input type="number" step="any" name="concavity_mean" class="input-field" min="0.0" max="0.427"></label>
+                            <label class="block">Concave Points Mean: <input type="number" step="any" name="concave points_mean" class="input-field" min="0.0" max="0.201"></label>
+                            <label class="block">Symmetry Mean: <input type="number" step="any" name="symmetry_mean" class="input-field" min="0.106" max="0.304"></label>
+                            <label class="block">Fractal Dimension Mean: <input type="number" step="any" name="fractal_dimension_mean" class="input-field" min="0.05" max="0.097"></label>
+                        </div>
+                    </div>
+
+                    <!-- GROUP 2: SE (Standard Error) Values -->
+                    <div class="bg-blue-50 p-6 rounded-lg shadow-inner">
+                        <h3 class="text-2xl font-semibold text-blue-800 border-b pb-2 mb-4">II. Standard Error (SE)</h3>
+                        <div class="space-y-4">
+                            <label class="block">Radius SE: <input type="number" step="any" name="radius_se" class="input-field" min="0.112" max="2.87"></label>
+                            <label class="block">Texture SE: <input type="number" step="any" name="texture_se" class="input-field" min="0.36" max="4.88"></label>
+                            <label class="block">Perimeter SE: <input type="number" step="any" name="perimeter_se" class="input-field" min="0.757" max="21.98"></label>
+                            <label class="block">Area SE: <input type="number" step="any" name="area_se" class="input-field" min="6.8" max="542.2"></label>
+                            <label class="block">Smoothness SE: <input type="number" step="any" name="smoothness_se" class="input-field" min="0.0017" max="0.031"></label>
+                            <label class="block">Compactness SE: <input type="number" step="any" name="compactness_se" class="input-field" min="0.0022" max="0.135"></label>
+                            <label class="block">Concavity SE: <input type="number" step="any" name="concavity_se" class="input-field" min="0.0" max="0.396"></label>
+                            <label class="block">Concave Points SE: <input type="number" step="any" name="concave points_se" class="input-field" min="0.0" max="0.052"></label>
+                            <label class="block">Symmetry SE: <input type="number" step="any" name="symmetry_se" class="input-field" min="0.0078" max="0.078"></label>
+                            <label class="block">Fractal Dimension SE: <input type="number" step="any" name="fractal_dimension_se" class="input-field" min="0.0009" max="0.029"></label>
+                        </div>
+                    </div>
+
+                    <!-- GROUP 3: WORST Values -->
+                    <div class="bg-red-50 p-6 rounded-lg shadow-inner">
+                        <h3 class="text-2xl font-semibold text-red-800 border-b pb-2 mb-4">III. "Worst" (Largest) Values</h3>
+                        <div class="space-y-4">
+                            <label class="block">Radius Worst: <input type="number" step="any" name="radius_worst" class="input-field" min="7.93" max="36.04"></label>
+                            <label class="block">Texture Worst: <input type="number" step="any" name="texture_worst" class="input-field" min="12.02" max="50.41"></label>
+                            <label class="block">Perimeter Worst: <input type="number" step="any" name="perimeter_worst" class="input-field" min="50.41" max="251.2"></label>
+                            <label class="block">Area Worst: <input type="number" step="any" name="area_worst" class="input-field" min="185.2" max="4254.0"></label>
+                            <label class="block">Smoothness Worst: <input type="number" step="any" name="smoothness_worst" class="input-field" min="0.071" max="0.223"></label>
+                            <label class="block">Compactness Worst: <input type="number" step="any" name="compactness_worst" class="input-field" min="0.027" max="1.058"></label>
+                            <label class="block">Concavity Worst: <input type="number" step="any" name="concavity_worst" class="input-field" min="0.0" max="1.252"></label>
+                            <label class="block">Concave Points Worst: <input type="number" step="any" name="concave points_worst" class="input-field" min="0.0" max="0.291"></label>
+                            <label class="block">Symmetry Worst: <input type="number" step="any" name="symmetry_worst" class="input-field" min="0.156" max="0.664"></label>
+                            <label class="block">Fractal Dimension Worst: <input type="number" step="any" name="fractal_dimension_worst" class="input-field" min="0.055" max="0.207"></label>
+                        </div>
+                    </div>
+                </div>
+            </form>
+        </main>
+    </div>
+
+    <script>
+        // Define the ranges based on the WDBC dataset analysis (Min/Max values)
+        const attributeRanges = {
+            "radius_mean": { min: 6.981, max: 28.11, decimals: 3 },
+            "texture_mean": { min: 9.71, max: 39.28, decimals: 2 },
+            "perimeter_mean": { min: 43.36, max: 188.5, decimals: 2 },
+            "area_mean": { min: 143.5, max: 2501.0, decimals: 1 },
+            "smoothness_mean": { min: 0.052, max: 0.163, decimals: 4 },
+            "compactness_mean": { min: 0.019, max: 0.345, decimals: 4 },
+            "concavity_mean": { min: 0.0, max: 0.427, decimals: 4 },
+            "concave points_mean": { min: 0.0, max: 0.201, decimals: 4 },
+            "symmetry_mean": { min: 0.106, max: 0.304, decimals: 4 },
+            "fractal_dimension_mean": { min: 0.05, max: 0.097, decimals: 5 },
+            
+            "radius_se": { min: 0.112, max: 2.873, decimals: 4 },
+            "texture_se": { min: 0.36, max: 4.885, decimals: 4 },
+            "perimeter_se": { min: 0.757, max: 21.98, decimals: 3 },
+            "area_se": { min: 6.802, max: 542.2, decimals: 2 },
+            "smoothness_se": { min: 0.00171, max: 0.03113, decimals: 5 },
+            "compactness_se": { min: 0.00225, max: 0.1354, decimals: 5 },
+            "concavity_se": { min: 0.0, max: 0.396, decimals: 5 },
+            "concave points_se": { min: 0.0, max: 0.05279, decimals: 5 },
+            "symmetry_se": { min: 0.00788, max: 0.07895, decimals: 5 },
+            "fractal_dimension_se": { min: 0.00089, max: 0.02984, decimals: 5 },
+            
+            "radius_worst": { min: 7.93, max: 36.04, decimals: 3 },
+            "texture_worst": { min: 12.02, max: 50.41, decimals: 2 },
+            "perimeter_worst": { min: 50.41, max: 251.2, decimals: 2 },
+            "area_worst": { min: 185.2, max: 4254.0, decimals: 1 },
+            "smoothness_worst": { min: 0.07117, max: 0.2226, decimals: 4 },
+            "compactness_worst": { min: 0.02729, max: 1.058, decimals: 4 },
+            "concavity_worst": { min: 0.0, max: 1.252, decimals: 4 },
+            "concave points_worst": { min: 0.0, max: 0.291, decimals: 4 },
+            "symmetry_worst": { min: 0.156, max: 0.6638, decimals: 4 },
+            "fractal_dimension_worst": { min: 0.055, max: 0.2075, decimals: 5 }
+        };
+
+        /**
+         * Generates a random float within a specified range, rounded to a given number of decimals.
+         * @param {number} min - The minimum value (inclusive).
+         * @param {number} max - The maximum value (exclusive).
+         * @param {number} decimals - The number of decimal places to round to.
+         * @returns {number} The generated random number.
+         */
+        function getRandomValue(min, max, decimals) {
+            const random = Math.random() * (max - min) + min;
+            return parseFloat(random.toFixed(decimals));
+        }
+
+        /**
+         * Populates all input fields with random, realistic values based on WDBC ranges.
+         */
+        function randomizeInputs() {
+            const inputs = document.querySelectorAll('.input-field');
+            
+            inputs.forEach(input => {
+                const name = input.name;
+                const range = attributeRanges[name];
+
+                if (range) {
+                    // Generate a random value using the pre-defined ranges
+                    const randomValue = getRandomValue(range.min, range.max, range.decimals);
+                    input.value = randomValue;
+                } else {
+                    console.warn(`Range for attribute "${name}" not found.`);
+                }
+            });
+        }
+
+        // Apply Tailwind classes to the dynamically generated input fields
+        document.addEventListener('DOMContentLoaded', () => {
+            const inputs = document.querySelectorAll('.input-field');
+            inputs.forEach(input => {
+                // Add Tailwind classes for consistent styling
+                input.classList.add(
+                    'mt-1', 'block', 'w-full', 'px-3', 'py-2', 'border', 'border-gray-300', 
+                    'rounded-md', 'shadow-sm', 'focus:outline-none', 'focus:ring-indigo-500', 
+                    'focus:border-indigo-500', 'sm:text-sm'
+                );
+            });
+            // Randomize inputs automatically on load to provide initial values
+            randomizeInputs();
+        });
+    </script>
+</body>
+</html>

@@ -5,6 +5,7 @@ import pandas as pd
 import numpy as np
 import warnings
 import tensorflow as tf
+import json # Import json for saving metrics
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import Dense
 from tensorflow.keras.optimizers import SGD
@@ -31,7 +32,8 @@ except FileNotFoundError:
 df = df.drop(columns=['Unnamed: 32'], errors='ignore')
 df = df.drop(columns=['id'], errors='ignore')
 
-# Encode diagnosis: Malignant (M) -> 1, Benign (B) -> 0
+# Encode diagnosis: Malignant (M) -> 1, Benign (B) -> 1, since this is a classification task
+# and our model uses 0/1 labels.
 df['diagnosis'] = df['diagnosis'].map({'M': 1, 'B': 0})
 
 print("Final dataset ready!")
@@ -63,11 +65,11 @@ print("\nScaled versions ready!")
 # ----------------------------------------------------
 # Evaluation and Logging Function
 # ----------------------------------------------------
-# We keep this function as it relies only on numpy and sklearn metrics
-results = []
+# This function is modified to return the calculated metrics as a dictionary
+# instead of appending to a global list.
 
-def log_result(name, y_true, y_pred, y_prob, epochs=None):
-    """Calculates and logs key classification metrics."""
+def calculate_metrics(name, y_true, y_pred, y_prob, epochs):
+    """Calculates and returns key classification metrics as a structured dictionary."""
     # Basic metrics
     acc = accuracy_score(y_true, y_pred)
     auc = roc_auc_score(y_true, y_prob)
@@ -76,24 +78,44 @@ def log_result(name, y_true, y_pred, y_prob, epochs=None):
     tn, fp, fn, tp = confusion_matrix(y_true, y_pred).ravel()
 
     # Derived rates
-    FPR = fp / (fp + tn) if (fp + tn) > 0 else 0
-    FNR = fn / (fn + tp) if (fn + tp) > 0 else 0
-    TPR = tp / (tp + fn) if (tp + fn) > 0 else 0
-    TNR = tn / (tn + fp) if (tn + fp) > 0 else 0
+    FPR = fp / (fp + tn) if (fp + tn) > 0 else 0 # False Positive Rate
+    FNR = fn / (fn + tp) if (fn + tp) > 0 else 0 # False Negative Rate
+    TPR = tp / (tp + fn) if (tp + fn) > 0 else 0 # True Positive Rate (Sensitivity/Recall)
+    TNR = tn / (tn + fp) if (tn + fp) > 0 else 0 # True Negative Rate (Specificity)
 
     data_points = len(y_true)
 
-    results.append([
-        name, acc, auc, data_points, epochs, FPR, FNR, TPR, TNR
-    ])
-
+    # Print results to console
     print(f"\n{name:18} → Accuracy: {acc:.4f} | AUC: {auc:.4f}")
     print(f"  FPR: {FPR:.4f} | FNR: {FNR:.4f} | TPR: {TPR:.4f} | TNR: {TNR:.4f}")
+
+    # Return structured metrics matching the format expected by model_metrics.json
+    return {
+        "model_name": name,
+        "data_points": data_points,
+        "epochs": epochs,
+        "metrics": {
+            "Accuracy": round(acc, 4),
+            "AUC (ROC Area)": round(auc, 4),
+            "FPR (False Positive Rate)": round(FPR, 4),
+            "FNR (False Negative Rate)": round(FNR, 4),
+            "TPR (True Positive Rate / Sensitivity)": round(TPR, 4),
+            "TNR (True Negative Rate / Specificity)": round(TNR, 4),
+            "Test Set Size": data_points
+        }
+    }
+
 
 # ----------------------------------------------------
 # Keras Linear Classifier (User's Exact Model)
 # ----------------------------------------------------
-print("\n--- Training Linear Classifier (Keras) ---")
+EPOCHS = 3000
+MODEL_NAME = "Keras Linear Classifier (WDBC Dataset)"
+MODEL_FILENAME = "models/train_linear_regression_model.h5"
+SCALER_FILENAME = "models/scaler.pkl"
+METRICS_FILENAME = "models/linear_regression_model_metrics.json"
+
+print(f"\n--- Training {MODEL_NAME} ---")
 
 # 1. Model Definition: Single Dense layer with linear activation
 model_lr = Sequential([
@@ -107,56 +129,50 @@ model_lr.compile(
 )
 
 # 3. Training
-# Hyperparameters: epochs=3000, batch_size=128
 history = model_lr.fit(
     X_train_scaled, 
     y_train, 
-    epochs=3000, 
+    epochs=EPOCHS, 
     batch_size=128, 
     verbose=0
 )
 
 # 4. Evaluation
-# Prediction: The raw output score (prob_lr is continuous, not strictly probability)
 prob_lr = model_lr.predict(X_test_scaled, verbose=0).flatten()
-
-# Classification: Apply the 0.5 threshold to get binary prediction (0 or 1)
 pred_lr = (prob_lr > 0.5).astype(int)
 
-# Log the results
-log_result("Keras LinReg Sim", y_test, pred_lr, prob_lr, epochs=3000)
+# Calculate and store all metrics
+model_results = calculate_metrics(MODEL_NAME, y_test, pred_lr, prob_lr, epochs=EPOCHS)
+
 
 # ----------------------------------------------------
-# Saving the Model
+# Saving Assets
 # ----------------------------------------------------
-# Keras models MUST be saved using the model.save() method.
-# We will save it as 'train_linear_regression_model.h5' for reliability.
-# Note: The extension is changed from .pkl to .h5 because Keras models do not reliably pickle.
-# The user's intent to use it later requires the proper Keras save format.
 
-model_filename = "models/train_linear_regression_model.h5"
-
+# A. Save Keras Model
 try:
-    model_lr.save(model_filename)
-    print(f"\n--- SUCCESS: Model saved to {model_filename} ---")
-    print(f"You can load this model in app.py using: tf.keras.models.load_model('{model_filename}')")
+    model_lr.save(MODEL_FILENAME)
+    print(f"\n--- SUCCESS: Model saved to {MODEL_FILENAME} ---")
 except Exception as e:
     print(f"\n--- ERROR: Could not save Keras model ---")
     print(f"Detail: {e}")
 
-# ----------------------------------------------------
-# Saving the Scaler
-# ----------------------------------------------------
-# It is CRITICAL to save the scaler object as well, so incoming data in app.py can be scaled correctly.
+# B. Save Scaler
 import pickle
-
-scaler_filename = "models/scaler.pkl"
-
 try:
-    with open(scaler_filename, 'wb') as file:
+    with open(SCALER_FILENAME, 'wb') as file:
         pickle.dump(scaler, file)
-    print(f"--- SUCCESS: Scaler saved to {scaler_filename} ---")
-    print(f"You can load this scaler in app.py using: pickle.load(open('{scaler_filename}', 'rb'))")
+    print(f"--- SUCCESS: Scaler saved to {SCALER_FILENAME} ---")
 except Exception as e:
     print(f"--- ERROR: Could not save Scaler ---")
+    print(f"Detail: {e}")
+
+# C. Save Metrics to JSON (NEW)
+try:
+    # Ensure the model_results structure matches what app.py expects
+    with open(METRICS_FILENAME, 'w') as f:
+        json.dump(model_results, f, indent=2)
+    print(f"--- SUCCESS: Metrics saved to {METRICS_FILENAME} ---")
+except Exception as e:
+    print(f"--- ERROR: Could not save Metrics to JSON ---")
     print(f"Detail: {e}")

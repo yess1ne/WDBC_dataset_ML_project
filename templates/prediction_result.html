@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Prediction Result</title>
+    <!-- Load Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-50 min-h-screen p-4 sm:p-8 font-sans flex items-center justify-center">
+
+    <div class="max-w-xl w-full mx-auto bg-white p-10 rounded-xl shadow-2xl text-center">
+        <h1 class="text-3xl font-extrabold text-gray-900 mb-6">Prediction Results</h1>
+        
+        <!-- Result Card -->
+        <div class="p-6 rounded-lg {% if prediction_class == 1 %}bg-red-100 border-red-500 text-red-800{% else %}bg-green-100 border-green-500 text-green-800{% endif %} border-2">
+            <h2 class="text-2xl font-bold mb-2">Diagnosis: {{ result_label }}</h2>
+            <p class="text-lg">Confidence Score: <span class="font-mono text-xl">{{ prediction_score }}</span></p>
+            <p class="mt-4 text-sm text-gray-700">Model Used: {{ model_name }}</p>
+        </div>
+        
+
+        <p class="mt-6 text-gray-600">
+            This result is based on the 30 features you provided.
+        </p>
+
+        <a href="/predict" class="mt-8 inline-block bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-6 rounded-lg transition duration-200 shadow-lg">
+            Try Another Prediction
+        </a>
+    </div>
+</body>
+</html>
