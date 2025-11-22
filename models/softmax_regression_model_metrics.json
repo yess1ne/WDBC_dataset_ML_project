@@ -1,0 +1,14 @@
+{
+  "model_name": "Keras Softmax Regression Classifier",
+  "data_points": 171,
+  "epochs": 3000,
+  "metrics": {
+    "Accuracy": 0.9825,
+    "AUC (ROC Area)": 0.9993,
+    "FPR (False Positive Rate)": 0.0,
+    "FNR (False Negative Rate)": 0.0469,
+    "TPR (True Positive Rate / Sensitivity)": 0.9531,
+    "TNR (True Negative Rate / Specificity)": 1.0,
+    "Test Set Size": 171
+  }
+}
