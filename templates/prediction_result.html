@@ -4,29 +4,97 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Prediction Result</title>
-    <!-- Load Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f7fafc; }
+        .result-card { border-left: 8px solid; }
+        .result-malignant { border-color: #ef4444; } /* Red */
+        .result-benign { border-color: #10b981; } /* Green */
+        .metric-table th, .metric-table td { padding: 0.5rem 1rem; }
+    </style>
 </head>
-<body class="bg-gray-50 min-h-screen p-4 sm:p-8 font-sans flex items-center justify-center">
+<body class="p-4 md:p-8">
 
-    <div class="max-w-xl w-full mx-auto bg-white p-10 rounded-xl shadow-2xl text-center">
-        <h1 class="text-3xl font-extrabold text-gray-900 mb-6">Prediction Results</h1>
+    <div class="max-w-4xl mx-auto bg-white shadow-xl rounded-xl p-6 md:p-10">
+        <h1 class="text-3xl font-extrabold text-gray-800 mb-6 border-b pb-2">Prediction Results</h1>
         
-        <!-- Result Card -->
-        <div class="p-6 rounded-lg {% if prediction_class == 1 %}bg-red-100 border-red-500 text-red-800{% else %}bg-green-100 border-green-500 text-green-800{% endif %} border-2">
-            <h2 class="text-2xl font-bold mb-2">Diagnosis: {{ result_label }}</h2>
-            <p class="text-lg">Confidence Score: <span class="font-mono text-xl">{{ prediction_score }}</span></p>
-            <p class="mt-4 text-sm text-gray-700">Model Used: {{ model_name }}</p>
+        <!-- Prediction Result Section -->
+        <div class="mb-8">
+            <h2 class="text-2xl font-semibold text-gray-700 mb-4">Diagnosis for Input Case</h2>
+
+            <div class="result-card p-6 rounded-lg shadow-md transition-all 
+                {% if prediction_class == 1 %} 
+                    result-malignant bg-red-50 
+                {% else %} 
+                    result-benign bg-green-50 
+                {% endif %}">
+                
+                <p class="text-lg font-medium text-gray-600 mb-2">Predicted Classification:</p>
+                <p class="text-4xl font-bold 
+                    {% if prediction_class == 1 %} 
+                        text-red-700 
+                    {% else %} 
+                        text-green-700 
+                    {% endif %}">
+                    {{ result_label }}
+                </p>
+
+                <p class="mt-4 text-sm text-gray-700">
+                    Confidence Score: <span class="font-mono bg-white px-2 py-1 rounded">{{ prediction_score }}</span> 
+                    (Score > 0.5 is Malignant)
+                </p>
+                <!-- Now using the descriptive name from MODELS_CONFIG -->
+                <p class="mt-2 text-sm text-gray-500">Model Used: {{ model_name }}</p>
+            </div>
+        </div>
+
+        <!-- Model Performance Metrics Section -->
+        <div class="mb-8">
+            <h2 class="text-2xl font-semibold text-gray-700 mb-4 border-t pt-4">Overall Performance of the {{ model_name }}</h2>
+            <p class="text-sm text-gray-500 mb-4">
+                Metrics calculated on the held-out test dataset for the deployed model.
+            </p>
+
+            <div class="bg-gray-50 p-4 rounded-lg shadow-inner">
+                {% if model_metrics %}
+                <table class="w-full text-left text-sm metric-table">
+                    <thead class="text-xs text-gray-700 uppercase bg-gray-200 rounded-t-lg">
+                        <tr>
+                            <th scope="col" class="py-2 px-6">Metric</th>
+                            <th scope="col" class="py-2 px-6">Value</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for key, value in model_metrics.items() %}
+                        <tr class="bg-white border-b hover:bg-gray-50">
+                            <th scope="row" class="py-2 px-6 font-medium text-gray-900 whitespace-nowrap">
+                                {{ key }}
+                            </th>
+                            <td class="py-2 px-6 font-mono text-gray-700">
+                                {{ "%.4f" | format(value) if value is number else value }}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                {% else %}
+                <p class="text-center text-red-500">Performance metrics could not be loaded or are missing for this model.</p>
+                {% endif %}
+            </div>
         </div>
         
+        <!-- Back Button -->
+        <div class="mt-8 pt-4 border-t flex justify-between">
+            <a href="{{ url_for('show_prediction_form') }}" class="inline-flex items-center px-4 py-2 bg-indigo-600 text-white font-semibold rounded-lg shadow-md hover:bg-indigo-700 transition duration-300">
+                &larr; Analyze Another Case
+            </a>
+            <a href="{{ url_for('home') }}" class="inline-flex items-center px-4 py-2 bg-gray-200 text-gray-800 font-semibold rounded-lg shadow-md hover:bg-gray-300 transition duration-300">
+                Go to Home
+            </a>
+        </div>
 
-        <p class="mt-6 text-gray-600">
-            This result is based on the 30 features you provided.
-        </p>
-
-        <a href="/predict" class="mt-8 inline-block bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-6 rounded-lg transition duration-200 shadow-lg">
-            Try Another Prediction
-        </a>
     </div>
+
 </body>
 </html>
