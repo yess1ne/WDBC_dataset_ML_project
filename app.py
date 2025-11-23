@@ -6,7 +6,7 @@ import pickle
 import json
 import numpy as np
 import pandas as pd
-from flask import Flask, render_template, request, redirect, url_for
+from flask import Flask, render_template, request, redirect, url_for, Response # Import Response
 import tensorflow as tf
 
 # Suppress TensorFlow warnings/logs
@@ -19,17 +19,20 @@ app = Flask(__name__)
 # SCALER remains global as it is shared across all models.
 SCALER = None 
 
-# NEW: Configuration dictionary to hold all models and their associated assets.
-# This makes it easy to add new models (e.g., 'logistic_regression', 'svm', etc.) later.
+# Configuration dictionary holds both the Linear and Softmax models.
 MODELS_CONFIG = {
     "linear_regression": {
         "name": "Linear Regression Classifier", # Descriptive name for display
         "path": "models/train_linear_regression_model.h5",
         "metrics": "models/linear_regression_model_metrics.json",
         "instance": None # Placeholder for the loaded Keras model instance
+    },
+    "softmax_regression": {
+        "name": "Softmax Regression Classifier",
+        "path": "models/train_softmax_regression_model.h5",
+        "metrics": "models/softmax_regression_model_metrics.json",
+        "instance": None
     }
-    # Future models will be added here:
-    # "logistic_regression": { ... }
 }
 
 # Feature names (used to ensure input order matches training order)
@@ -48,12 +51,12 @@ FEATURE_NAMES = [
 SCALER_FILENAME = "models/scaler.pkl"
 
 
-# --- Asset Loading Function (Modified for Scalability) ---
+# --- Asset Loading Function ---
 def load_assets():
     """Loads the shared StandardScaler and all models defined in MODELS_CONFIG."""
     global SCALER
     
-    # 1. Load Scaler (Remains the same)
+    # 1. Load Scaler
     if not os.path.exists(SCALER_FILENAME):
         print(f"ERROR: Scaler file not found at {SCALER_FILENAME}. Cannot scale inputs.")
         return False
@@ -95,14 +98,13 @@ def load_assets():
             try:
                 with open(config['metrics'], 'r') as f:
                     metrics_data = json.load(f)
-                # Store the loaded data in a new key
                 MODELS_CONFIG[model_key]['metrics_data'] = metrics_data
                 print("SUCCESS: Model Metrics loaded.")
             except Exception as e:
                 print(f"ERROR loading metrics: {e}")
                 MODELS_CONFIG[model_key]['metrics_data'] = {"model_name": config['name'], "metrics": {}}
                 
-    return True # We return True even if some models failed, as long as SCALER loaded.
+    return True 
 
 # --- Routes ---
 
@@ -121,15 +123,13 @@ def show_prediction_form():
 
 @app.route('/predict_result', methods=['POST'])
 def handle_prediction():
-    """Handles the form submission, performs prediction, and shows results."""
+    """
+    Handles the form submission, performs prediction using ALL available models,
+    and shows the comparative results dashboard.
+    """
     
-    # NOTE: For now, we hardcode to use the 'linear_regression' model key
-    # In a scalable version, the user form would submit which model_key to use.
-    CURRENT_MODEL_KEY = "linear_regression" 
-    config = MODELS_CONFIG.get(CURRENT_MODEL_KEY)
-    
-    if not SCALER or not config or not config['instance']:
-        return "Application assets not loaded properly or model configuration missing. Check console output.", 500
+    if not SCALER:
+        return "Application assets not loaded properly. Check console output.", 500
 
     try:
         # 1. Extract and Validate Input Data
@@ -140,47 +140,137 @@ def handle_prediction():
                  return f"Missing required feature: {feature}", 400
             input_data[feature] = value
         
-        # 2. Convert to DataFrame and Scale
+        # Convert to DataFrame for scaling
         data_df = pd.DataFrame([input_data])
+        # Scale the single input point
         input_scaled = SCALER.transform(data_df[FEATURE_NAMES])
         
-        # 3. Prediction Logic
-        model_instance = config['instance']
-        model_used_name = config['name'] # Get name from config
-        model_metrics = config['metrics_data'].get("metrics", {}) # Get metrics from config
+        # List to store results from all models
+        all_model_results = []
 
-        if model_instance == "MOCK":
-            # Mock prediction logic (same as before)
-            prediction_score = np.random.uniform(0.1, 0.9)
-            prediction_class = 1 if prediction_score > 0.5 else 0
-            if data_df['radius_mean'].iloc[0] > 15:
-                prediction_score = np.random.uniform(0.7, 0.9)
-                prediction_class = 1 
+        # 2. Iterate through ALL Models and Predict
+        for model_key, config in MODELS_CONFIG.items():
+            
+            model_instance = config['instance']
+            model_used_name = config['name']
+            model_metrics = config['metrics_data'].get("metrics", {})
+            prediction_score = None
+            prediction_class = None
+            
+            if model_instance == "MOCK":
+                # Mock prediction logic
+                if data_df['radius_mean'].iloc[0] > 15:
+                    prediction_score = np.random.uniform(0.7, 0.9)
+                else:
+                    prediction_score = np.random.uniform(0.1, 0.3)
+                prediction_class = int(prediction_score > 0.5)
+                model_used_name += " (MOCK)"
+
             else:
-                prediction_score = np.random.uniform(0.1, 0.3)
-                prediction_class = 0 
-            model_used_name += " (MOCK - File Missing)"
-        
-        else:
-            # Actual Model Prediction
-            prediction_raw = model_instance.predict(input_scaled, verbose=0).flatten()[0]
-            prediction_score = float(prediction_raw)
-            prediction_class = int(prediction_score > 0.5)
+                # Actual Model Prediction
+                prediction_raw = model_instance.predict(input_scaled, verbose=0).flatten()
+                
+                # Determine score based on model output shape
+                if model_instance.output_shape == (None, 2):
+                     # Softmax output: [P(B), P(M)]. Use P(M) [index 1]
+                     prediction_score = float(prediction_raw[1]) 
+                else:
+                     # Linear output: [Score]
+                     prediction_score = float(prediction_raw[0])
+                     
+                prediction_class = int(prediction_score > 0.5)
 
-        # 4. Determine Result Label
-        result_label = "Malignant (M)" if prediction_class == 1 else "Benign (B)"
+            # Store the prediction result for this specific model
+            all_model_results.append({
+                'model_key': model_key,
+                'model_name': model_used_name,
+                'prediction_score': f"{prediction_score:.4f}",
+                'prediction_class': prediction_class,
+                'result_label': "Malignant (M)" if prediction_class == 1 else "Benign (B)",
+                'metrics': model_metrics
+            })
         
-        # 5. Render Result Page
+        # 3. Prepare data for the download link (simplified format)
+        # We need to serialize the complex data (all_model_results, input_data) for the URL
+        download_data = {
+            'inputs': input_data,
+            'results': [
+                {
+                    'model_name': res['model_name'].replace(' (MOCK)', ''), # Clean name
+                    'score': res['prediction_score'],
+                    'label': res['result_label'],
+                    'metrics': res['metrics']
+                } for res in all_model_results
+            ]
+        }
+        download_data_json = json.dumps(download_data)
+
+        # 4. Render Comparative Dashboard
         return render_template('prediction_result.html', 
-                               prediction_class=prediction_class,
-                               result_label=result_label,
-                               prediction_score=f"{prediction_score:.4f}",
-                               model_name=model_used_name,
-                               model_metrics=model_metrics) # Pass metrics from the config
+                               all_model_results=all_model_results,
+                               input_features=data_df.iloc[0].to_dict(),
+                               download_data_json=download_data_json) # Pass serialized data
 
     except Exception as e:
         print(f"An error occurred during prediction: {e}")
         return f"An internal error occurred: {e}", 500
+
+
+@app.route('/download_report', methods=['GET'])
+def download_report():
+    """
+    Generates a downloadable CSV report based on the prediction results
+    passed as a JSON string in the URL parameter 'data'.
+    """
+    
+    data_json = request.args.get('data')
+    if not data_json:
+        return "Error: No data provided for download.", 400
+        
+    try:
+        download_data = json.loads(data_json)
+        
+        # --- 1. Compile CSV Content ---
+        csv_output = []
+        
+        # A. Input Features Section
+        csv_output.append("--- Input Patient Features ---")
+        csv_output.append("Feature,Value")
+        for feature_name, value in download_data['inputs'].items():
+            csv_output.append(f"{feature_name},{value}")
+            
+        # B. Prediction Results Section
+        csv_output.append("\n--- Model Prediction Results ---")
+        csv_output.append("Model Name,Predicted Diagnosis,Confidence Score (P(M))")
+        for res in download_data['results']:
+            csv_output.append(f"{res['model_name']},{res['label']},{res['score']}")
+
+        # C. Performance Metrics Section (From Test Set)
+        csv_output.append("\n--- Model Test Set Performance Metrics ---")
+        
+        # Use metrics from the first model result to define all columns (assumes keys are consistent)
+        if download_data['results'] and download_data['results'][0]['metrics']:
+            metric_keys = list(download_data['results'][0]['metrics'].keys())
+            csv_output.append("Model Name," + ",".join(metric_keys))
+            
+            for res in download_data['results']:
+                metric_values = [str(res['metrics'].get(k, 'N/A')) for k in metric_keys]
+                csv_output.append(f"{res['model_name']}," + ",".join(metric_values))
+
+        # Join lines into a single CSV string
+        csv_content = "\n".join(csv_output)
+        
+        # --- 2. Create Flask Response ---
+        # Note: We use text/csv content type to force a download
+        response = Response(csv_content, mimetype='text/csv')
+        response.headers["Content-Disposition"] = "attachment; filename=model_prediction_report.csv"
+        return response
+
+    except json.JSONDecodeError:
+        return "Error: Invalid JSON data.", 400
+    except Exception as e:
+        print(f"Error during report generation: {e}")
+        return f"An internal error occurred during report generation: {e}", 500
 
 
 # --- Main Application Execution ---
@@ -189,8 +279,7 @@ if __name__ == '__main__':
     print("Attempting to load ML assets...")
     if load_assets():
         print("Starting Flask server...")
-        app.run(debug=True)
+        # Use a higher port if needed, but 5000 is standard for development
+        app.run(debug=True, port=5000)
     else:
-        # Note: App runs even if a model fails, as long as SCALER loads.
-        # This message will only show if SCALER fails.
         print("FATAL ERROR: Could not load required assets. Application will not start.")
