@@ -1,11 +1,11 @@
 {
     "model_name": "MLP Classifier (Deep NN)",
     "metrics": {
-        "Accuracy": "0.6316",
-        "AUC (ROC Area)": "0.5000",
-        "TPR (True Positive Rate / Sensitivity)": "0.0000",
-        "TNR (True Negative Rate / Specificity)": "1.0000",
-        "FPR (False Positive Rate)": "0.0000",
-        "FNR (False Negative Rate)": "1.0000"
+        "Accuracy": "0.9766",
+        "AUC (ROC Area)": "0.9904",
+        "TPR (True Positive Rate / Sensitivity)": "0.9841",
+        "TNR (True Negative Rate / Specificity)": "0.9722",
+        "FPR (False Positive Rate)": "0.0278",
+        "FNR (False Negative Rate)": "0.0159"
     }
 }

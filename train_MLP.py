@@ -81,6 +81,8 @@ try:
     df = pd.read_csv(DATA_FILE)
     df.drop('id', axis=1, inplace=True)
     df['diagnosis'] = df['diagnosis'].map({'M': 1, 'B': 0})
+    # FIX: Drop the extraneous unnamed column common in WDBC dataset
+    df = df.drop(columns=['Unnamed: 32'], errors='ignore')
     
     X = df.drop('diagnosis', axis=1).values
     y = df['diagnosis'].values

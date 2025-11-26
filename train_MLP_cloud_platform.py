@@ -65,7 +65,7 @@ def calculate_all_metrics(y_true, y_pred_proba):
     
     # Calculate Rates
     tpr = tp / (tp + fn) if (tp + fn) > 0 else 0.0  # True Positive Rate (Sensitivity)
-    tnr = tn / (tn + fp) if (tp + fn) > 0 else 0.0  # True Negative Rate (Specificity)
+    tnr = tn / (tn + fp) if (fp + tn) > 0 else 0.0  # True Negative Rate (Specificity)
     fpr = fp / (fp + tn) if (fp + tn) > 0 else 0.0  # False Positive Rate
     fnr = fn / (fn + tp) if (fn + tp) > 0 else 0.0  # False Negative Rate
 
@@ -82,14 +82,21 @@ def calculate_all_metrics(y_true, y_pred_proba):
 print("--- 1. Data Loading and Preparation ---")
 try:
     df = pd.read_csv(DATA_FILE)
+    
+    # FIX: Ensure 'id' column is dropped BEFORE determining features (X)
     df.drop('id', axis=1, inplace=True)
+    
+    # FIX: Drop the extraneous unnamed column common in WDBC dataset
+    df = df.drop(columns=['Unnamed: 32'], errors='ignore')
+    
     df['diagnosis'] = df['diagnosis'].map({'M': 1, 'B': 0})
     
+    # X should now have exactly 30 features
     X = df.drop('diagnosis', axis=1).values
     y = df['diagnosis'].values
     
-    # Split data: 80% training, 20% testing
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    # Split data: 70% training, 30% testing
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=42)
     
     # Feature scaling (StandardScaler)
     scaler = StandardScaler()
