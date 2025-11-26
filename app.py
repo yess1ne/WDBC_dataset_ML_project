@@ -6,7 +6,7 @@ import pickle
 import json
 import numpy as np
 import pandas as pd
-from flask import Flask, render_template, request, redirect, url_for, Response # Import Response
+from flask import Flask, render_template, request, redirect, url_for, Response
 import tensorflow as tf
 
 # Suppress TensorFlow warnings/logs
@@ -19,7 +19,7 @@ app = Flask(__name__)
 # SCALER remains global as it is shared across all models.
 SCALER = None 
 
-# Configuration dictionary holds both the Linear and Softmax models.
+# Configuration dictionary holds Linear, Softmax, and the new MLP models.
 MODELS_CONFIG = {
     "linear_regression": {
         "name": "Linear Regression Classifier", # Descriptive name for display
@@ -31,6 +31,13 @@ MODELS_CONFIG = {
         "name": "Softmax Regression Classifier",
         "path": "models/train_softmax_regression_model.h5",
         "metrics": "models/softmax_regression_model_metrics.json",
+        "instance": None
+    },
+    # NEW MODEL INTEGRATED
+    "mlp_classifier": {
+        "name": "MLP Classifier (Deep NN)",
+        "path": "models/train_MLP_model.h5",
+        "metrics": "models/MLP_model_metrics.json",
         "instance": None
     }
 }
@@ -175,7 +182,7 @@ def handle_prediction():
                      # Softmax output: [P(B), P(M)]. Use P(M) [index 1]
                      prediction_score = float(prediction_raw[1]) 
                 else:
-                     # Linear output: [Score]
+                     # Linear/MLP output: [Score]
                      prediction_score = float(prediction_raw[0])
                      
                 prediction_class = int(prediction_score > 0.5)

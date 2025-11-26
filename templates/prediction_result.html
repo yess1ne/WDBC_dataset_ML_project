@@ -35,10 +35,10 @@
         
         <header class="mb-8">
             <h1 class="text-4xl font-extrabold text-gray-900 tracking-tight">
-                Model Comparison Dashboard
+                Multi-Model Classification Dashboard
             </h1>
             <p class="mt-2 text-lg text-gray-500">
-                Comparative analysis of model predictions and test set performance for the provided patient features.
+                Comparative analysis of model predictions and test set performance for the provided patient features. **If an error occurs, ensure all 30 input features are present and your backend models (e.g., Keras MLP) were trained on the correct number of features (30, excluding the ID column).**
             </p>
             
             <!-- BUTTONS: Back & Download -->
@@ -64,7 +64,7 @@
         <section class="mb-12">
             <h2 class="text-2xl font-semibold text-gray-700 mb-6">Prediction Outcomes & Performance</h2>
             
-            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div class="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
                 {% for result in all_model_results %}
                 
                 {% set result_class = 'M' if result.prediction_class == 1 else 'B' %}
@@ -73,7 +73,7 @@
                     
                     <!-- Prediction Card Header -->
                     <div class="p-6 {{ 'prognosis-M' if result.prediction_class == 1 else 'prognosis-B' }}">
-                        <h3 class="text-2xl font-bold mb-2">{{ result.model_name }}</h3>
+                        <h3 class="text-xl font-bold mb-2">{{ result.model_name }}</h3>
                         <div class="flex items-center justify-between">
                             <span class="text-4xl font-extrabold tracking-tight">
                                 {{ result.result_label }}
