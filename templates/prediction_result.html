@@ -4,146 +4,62 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Prediction Comparison Dashboard</title>
-    <!-- Load Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap" rel="stylesheet">
     <style>
-        body {
-            font-family: 'Inter', sans-serif;
-            background-color: #f7f9fb;
-        }
-        .prognosis-M {
-            background-color: #fee2e2; /* Red-100 */
-            color: #ef4444; /* Red-500 */
-            border-left: 4px solid #f87171; /* Red-400 */
-        }
-        .prognosis-B {
-            background-color: #d1fae5; /* Green-100 */
-            color: #10b981; /* Green-500 */
-            border-left: 4px solid #34d399; /* Green-400 */
-        }
-        .metric-label {
-            font-medium text-gray-900;
-        }
-        .metric-value {
-            font-semibold text-lg;
-        }
-        /* Custom style for the scrollable table container */
-        .table-container {
-            max-height: 400px;
-            overflow-y: auto;
-            border: 1px solid #e2e8f0;
-            border-radius: 0.5rem;
-        }
-        .table-container table {
-            /* Ensure the header stays sticky */
-            border-collapse: collapse;
-        }
-        .table-container thead {
-            position: sticky;
-            top: 0;
-            z-index: 10;
-        }
+        body { font-family: 'Inter', sans-serif; background-color: #f7f9fb; }
+        .prognosis-M { background-color: #fee2e2; color: #ef4444; border-left: 4px solid #f87171; }
+        .prognosis-B { background-color: #d1fae5; color: #10b981; border-left: 4px solid #34d399; }
+        .table-container { max-height: 400px; overflow-y: auto; border: 1px solid #e2e8f0; border-radius: 0.5rem; }
+        .table-container thead { position: sticky; top: 0; z-index: 10; }
     </style>
 </head>
 <body class="min-h-screen p-4 sm:p-8">
     <div class="max-w-7xl mx-auto">
         
         <header class="mb-8">
-            <h1 class="text-4xl font-extrabold text-gray-900 tracking-tight">
-                Multi-Model Classification Dashboard
-            </h1>
+            <h1 class="text-4xl font-extrabold text-gray-900 tracking-tight">Multi-Model Classification Dashboard</h1>
             <p class="mt-2 text-lg text-gray-500">
-                Comparative analysis of model predictions and test set performance for the provided patient features. **If an error occurs, ensure all 30 input features are present and your backend models (e.g., Keras MLP) were trained on the correct number of features (30, excluding the ID column).**
+                Comparative analysis of model predictions and test set performance. Now includes <strong>Support Vector Machine (SVM)</strong> benchmarks.
             </p>
-            
-            <!-- BUTTONS: Back & Download -->
             <div class="mt-6 flex flex-col sm:flex-row gap-4">
-                <a href="{{ url_for('show_prediction_form') }}" class="inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition duration-150 ease-in-out w-full sm:w-auto">
+                <a href="{{ url_for('show_prediction_form') }}" class="inline-flex items-center justify-center px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700">
                     &larr; Enter New Features
                 </a>
-                
-                <!-- New Download Button -->
-                <button onclick="downloadReport()" class="inline-flex items-center justify-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md shadow-sm text-gray-700 bg-white hover:bg-gray-50 transition duration-150 ease-in-out w-full sm:w-auto">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
-                        <path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L10 11.586l2.293-2.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd" />
-                        <path fill-rule="evenodd" d="M10 2a1 1 0 011 1v7a1 1 0 11-2 0V3a1 1 0 011-1z" clip-rule="evenodd" />
-                    </svg>
+                <button onclick="downloadReport()" class="inline-flex items-center justify-center px-4 py-2 border border-gray-300 text-gray-700 bg-white rounded-md hover:bg-gray-50">
                     Download Prediction Report (CSV)
                 </button>
-                
             </div>
-            
         </header>
 
-        <!-- Model Results Section -->
+        <!-- Model Results Section (Dynamic Grid) -->
         <section class="mb-12">
             <h2 class="text-2xl font-semibold text-gray-700 mb-6">Prediction Outcomes & Performance</h2>
-            
             <div class="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
                 {% for result in all_model_results %}
-                
-                {% set result_class = 'M' if result.prediction_class == 1 else 'B' %}
-                
                 <div class="bg-white rounded-xl shadow-lg overflow-hidden transition duration-300 hover:shadow-xl">
-                    
-                    <!-- Prediction Card Header -->
+                    <!-- Header -->
                     <div class="p-6 {{ 'prognosis-M' if result.prediction_class == 1 else 'prognosis-B' }}">
                         <h3 class="text-xl font-bold mb-2">{{ result.model_name }}</h3>
                         <div class="flex items-center justify-between">
-                            <span class="text-4xl font-extrabold tracking-tight">
-                                {{ result.result_label }}
-                            </span>
+                            <span class="text-4xl font-extrabold tracking-tight">{{ result.result_label }}</span>
                             <div class="text-right">
                                 <span class="text-sm font-medium opacity-80 block">Confidence Score (P(M)):</span>
                                 <span class="text-2xl font-bold">{{ result.prediction_score }}</span>
                             </div>
                         </div>
                     </div>
-                    
-                    <!-- Prediction Card Body - Metrics -->
+                    <!-- Metrics Body -->
                     <div class="p-6">
-                        <h4 class="text-base font-semibold text-gray-700 mb-4 border-b pb-2">Model Test Set Performance</h4>
-                        
+                        <h4 class="text-base font-semibold text-gray-700 mb-4 border-b pb-2">Test Set Performance</h4>
                         <div class="grid grid-cols-3 gap-y-4 gap-x-2 text-sm">
                             {% set metrics = result.metrics %}
-                            
-                            <!-- 1. Accuracy -->
-                            <div class="flex flex-col">
-                                <span class="font-medium text-gray-900">Accuracy</span>
-                                <span class="text-gray-600 text-lg font-bold">{{ metrics['Accuracy']|default('N/A', True) }}</span>
-                            </div>
-                            
-                            <!-- 2. AUC -->
-                            <div class="flex flex-col">
-                                <span class="font-medium text-gray-900">AUC (ROC Area)</span>
-                                <span class="text-gray-600 text-lg font-bold">{{ metrics['AUC (ROC Area)']|default('N/A', True) }}</span>
-                            </div>
-
-                            <!-- 3. Sensitivity (TPR) -->
-                            <div class="flex flex-col">
-                                <span class="font-medium text-gray-900">Sensitivity (TPR)</span>
-                                <span class="text-gray-600 text-lg font-bold">{{ metrics['TPR (True Positive Rate / Sensitivity)']|default('N/A', True) }}</span>
-                            </div>
-
-                            <!-- 4. Specificity (TNR) -->
-                            <div class="flex flex-col">
-                                <span class="font-medium text-gray-900">Specificity (TNR)</span>
-                                <span class="text-gray-600 text-lg font-bold">{{ metrics['TNR (True Negative Rate / Specificity)']|default('N/A', True) }}</span>
-                            </div>
-                            
-                            <!-- 5. False Positive Rate (FPR) -->
-                            <div class="flex flex-col">
-                                <span class="font-medium text-gray-900">FPR</span>
-                                <span class="text-gray-600 text-lg font-bold">{{ metrics['FPR (False Positive Rate)']|default('N/A', True) }}</span>
-                            </div>
-
-                            <!-- 6. False Negative Rate (FNR) -->
-                            <div class="flex flex-col">
-                                <span class="font-medium text-gray-900">FNR</span>
-                                <span class="text-gray-600 text-lg font-bold">{{ metrics['FNR (False Negative Rate)']|default('N/A', True) }}</span>
-                            </div>
-                            
+                            <div class="flex flex-col"><span class="font-medium text-gray-900">Accuracy</span><span class="text-gray-600 text-lg font-bold">{{ metrics['Accuracy']|default('N/A', True) }}</span></div>
+                            <div class="flex flex-col"><span class="font-medium text-gray-900">AUC</span><span class="text-gray-600 text-lg font-bold">{{ metrics['AUC (ROC Area)']|default('N/A', True) }}</span></div>
+                            <div class="flex flex-col"><span class="font-medium text-gray-900">Sensitivity</span><span class="text-gray-600 text-lg font-bold">{{ metrics['TPR (True Positive Rate / Sensitivity)']|default('N/A', True) }}</span></div>
+                            <div class="flex flex-col"><span class="font-medium text-gray-900">Specificity</span><span class="text-gray-600 text-lg font-bold">{{ metrics['TNR (True Negative Rate / Specificity)']|default('N/A', True) }}</span></div>
+                            <div class="flex flex-col"><span class="font-medium text-gray-900">FPR</span><span class="text-gray-600 text-lg font-bold">{{ metrics['FPR (False Positive Rate)']|default('N/A', True) }}</span></div>
+                            <div class="flex flex-col"><span class="font-medium text-gray-900">FNR</span><span class="text-gray-600 text-lg font-bold">{{ metrics['FNR (False Negative Rate)']|default('N/A', True) }}</span></div>
                         </div>
                     </div>
                 </div>
@@ -151,34 +67,26 @@
             </div>
         </section>
 
-        <!-- NEW: Hyperparameter Configuration Section -->
+        <!-- Hyperparameter Configuration Table -->
         <section class="mb-12">
             <h2 class="text-2xl font-semibold text-gray-700 mb-4">Experimental Hyperparameter Configuration</h2>
-            <p class="text-gray-600 mb-4">
-                These are the hyperparameter settings used for training the models for interpretation of model performance credibility
-            </p>
             <div class="table-container shadow-lg bg-white">
                 <table id="hyperparameter-table" class="min-w-full divide-y divide-gray-200">
                     <thead class="bg-gray-50">
                         <tr>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Hyper-parameter</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">GRU-SVM</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Parameter</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Linear Regression</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider bg-red-100">MLP (Overfit Test)</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nearest Neighbor</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider bg-red-100">MLP</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Softmax Regression</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">SVM</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider bg-blue-100">SVM (New)</th>
                         </tr>
                     </thead>
-                    <tbody class="divide-y divide-gray-200 text-sm" id="hyperparameter-body">
-                        <!-- Content populated by script -->
-                    </tbody>
+                    <tbody class="divide-y divide-gray-200 text-sm" id="hyperparameter-body"></tbody>
                 </table>
             </div>
         </section>
 
-
-        <!-- Input Features Table (remains the same) -->
+        <!-- Input Features Table -->
         <section class="mb-12">
             <h2 class="text-2xl font-semibold text-gray-700 mb-4">Input Patient Features</h2>
             <div class="bg-white rounded-xl shadow-lg p-6">
@@ -188,20 +96,13 @@
                         {% for row_pair in feature_chunks %}
                         <tr class="hover:bg-gray-50">
                             {% for feature_name, feature_value in row_pair %}
-                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 w-1/4">
-                                {{ feature_name | replace('_', ' ') | title }}
-                            </td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 w-1/4">
-                                {{ feature_value }}
-                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 w-1/4">{{ feature_name | replace('_', ' ') | title }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 w-1/4">{{ feature_value }}</td>
                             {% endfor %}
                         </tr>
                         {% endfor %}
                     </tbody>
                 </table>
-                <p class="mt-4 text-sm text-gray-500">
-                    These are the 30 standardized features used to generate all predictions.
-                </p>
             </div>
         </section>
         
@@ -210,67 +111,47 @@
     <script>
         // Data extracted from the image for the hyperparameter table
         const hyperparameterData = [
-            { param: "Batch Size", 'GRU-SVM': "128", 'Linear Regression': "128", 'MLP': "128", 'Nearest Neighbor': "N/A", 'Softmax Regression': "128", 'SVM': "128" },
-            { param: "Cell Size / Layers", 'GRU-SVM': "128", 'Linear Regression': "N/A", 'MLP': "[500, 500, 500]", 'Nearest Neighbor': "N/A", 'Softmax Regression': "N/A", 'SVM': "N/A" },
-            { param: "Dropout Rate", 'GRU-SVM': "0.5", 'Linear Regression': "N/A", 'MLP': "None", 'Nearest Neighbor': "N/A", 'Softmax Regression': "N/A", 'SVM': "N/A" },
-            { param: "Epochs", 'GRU-SVM': "3000", 'Linear Regression': "3000", 'MLP': "3000", 'Nearest Neighbor': "1", 'Softmax Regression': "3000", 'SVM': "3000" },
-            { param: "Learning Rate", 'GRU-SVM': "1e-3", 'Linear Regression': "1e-3", 'MLP': "1e-2", 'Nearest Neighbor': "N/A", 'Softmax Regression': "1e-3", 'SVM': "1e-3" },
-            { param: "Norm / Regularization", 'GRU-SVM': "L2", 'Linear Regression': "N/A", 'MLP': "N/A", 'Nearest Neighbor': "L1, L2", 'Softmax Regression': "N/A", 'SVM': "L2" },
-            { param: "SVM C / Kernel", 'GRU-SVM': "N/A", 'Linear Regression': "N/A", 'MLP': "N/A", 'Nearest Neighbor': "N/A", 'Softmax Regression': "N/A", 'SVM': "5 / RBF" }
+            { param: "Batch Size", 'Linear Regression': "128", 'MLP': "128", 'Softmax Regression': "128", 'SVM': "128" },
+            { param: "Cell Size", 'Linear Regression': "N/A", 'MLP': "[500, 500, 500]", 'Softmax Regression': "N/A", 'SVM': "N/A" },
+            { param: "Epochs", 'Linear Regression': "3000", 'MLP': "3000", 'Softmax Regression': "3000", 'SVM': "3000" },
+            { param: "Learning Rate", 'Linear Regression': "1e-3", 'MLP': "1e-2", 'Softmax Regression': "1e-3", 'SVM': "1e-3" },
+            { param: "Norm", 'Linear Regression': "N/A", 'MLP': "N/A", 'Softmax Regression': "N/A", 'SVM': "L2" },
+            { param: "SVM C", 'Linear Regression': "N/A", 'MLP': "N/A", 'Softmax Regression': "N/A", 'SVM': "5" }
         ];
 
-        /**
-         * Populates the hyperparameter configuration table using the hardcoded data.
-         */
         function populateHyperparameterTable() {
             const tableBody = document.getElementById('hyperparameter-body');
-            const modelKeys = ['GRU-SVM', 'Linear Regression', 'MLP', 'Nearest Neighbor', 'Softmax Regression', 'SVM'];
+            const modelKeys = ['Linear Regression', 'MLP', 'Softmax Regression', 'SVM'];
 
             hyperparameterData.forEach(rowData => {
                 const row = document.createElement('tr');
                 row.classList.add('hover:bg-gray-50');
                 
-                // Parameter Name (Bold)
                 let cell = document.createElement('td');
-                cell.classList.add('px-6', 'py-4', 'font-medium', 'text-gray-900', 'whitespace-nowrap');
+                cell.classList.add('px-6', 'py-4', 'font-medium', 'text-gray-900');
                 cell.textContent = rowData.param;
                 row.appendChild(cell);
 
-                // Values for each model
                 modelKeys.forEach(model => {
                     cell = document.createElement('td');
-                    cell.classList.add('px-6', 'py-4', 'text-gray-600', 'whitespace-nowrap');
+                    cell.classList.add('px-6', 'py-4', 'text-gray-600');
                     cell.textContent = rowData[model] || 'N/A';
                     
-                    // Highlight the MLP cell for visual clarity of the aggressive settings
-                    if (model === 'MLP') {
-                        cell.classList.add('font-bold', 'bg-red-50');
-                    }
+                    if (model === 'MLP') cell.classList.add('font-bold', 'bg-red-50');
+                    if (model === 'SVM') cell.classList.add('font-bold', 'bg-blue-50');
                     
                     row.appendChild(cell);
                 });
-                
                 tableBody.appendChild(row);
             });
         }
         
-        // Triggers the download of the prediction report as a CSV file.
         function downloadReport() {
-            // Get the JSON data passed from Flask (assuming Jinja2 context is available)
             const downloadData = {{ download_data_json | tojson | safe }};
-
-            // Encode the JSON data for safe transmission in the URL
             const encodedData = encodeURIComponent(downloadData);
-            
-            // Construct the URL to the Flask download route (assuming it's available)
-            // Note: This relies on the backend (Flask) to handle the URL generation.
-            const downloadUrl = "{{ url_for('download_report') }}?data=" + encodedData;
-            
-            // Navigate to the URL to trigger the file download
-            window.location.href = downloadUrl;
+            window.location.href = "{{ url_for('download_report') }}?data=" + encodedData;
         }
 
-        // Run population function on window load
         window.onload = populateHyperparameterTable;
     </script>
 </body>
