@@ -20,7 +20,7 @@
         <header class="mb-8">
             <h1 class="text-4xl font-extrabold text-gray-900 tracking-tight">Multi-Model Classification Dashboard</h1>
             <p class="mt-2 text-lg text-gray-500">
-                Comparative analysis of model predictions and test set performance. Now includes <strong>Support Vector Machine (SVM)</strong> benchmarks.
+                Comparative analysis of model predictions and test set performance. Now includes <strong>Support Vector Machine (SVM)</strong> and <strong>GRU-SVM (Recurrent NN)</strong> benchmarks.
             </p>
             <div class="mt-6 flex flex-col sm:flex-row gap-4">
                 <a href="{{ url_for('show_prediction_form') }}" class="inline-flex items-center justify-center px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700">
@@ -78,7 +78,8 @@
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Linear Regression</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider bg-red-100">MLP</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Softmax Regression</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider bg-blue-100">SVM (New)</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider bg-blue-100">SVM</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider bg-green-100">GRU-SVM (New)</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-gray-200 text-sm" id="hyperparameter-body"></tbody>
@@ -109,19 +110,20 @@
     </div>
     
     <script>
-        // Data extracted from the image for the hyperparameter table
+        // Data updated to include the GRU-SVM configuration and the new GRU Units parameter.
         const hyperparameterData = [
-            { param: "Batch Size", 'Linear Regression': "128", 'MLP': "128", 'Softmax Regression': "128", 'SVM': "128" },
-            { param: "Cell Size", 'Linear Regression': "N/A", 'MLP': "[500, 500, 500]", 'Softmax Regression': "N/A", 'SVM': "N/A" },
-            { param: "Epochs", 'Linear Regression': "3000", 'MLP': "3000", 'Softmax Regression': "3000", 'SVM': "3000" },
-            { param: "Learning Rate", 'Linear Regression': "1e-3", 'MLP': "1e-2", 'Softmax Regression': "1e-3", 'SVM': "1e-3" },
-            { param: "Norm", 'Linear Regression': "N/A", 'MLP': "N/A", 'Softmax Regression': "N/A", 'SVM': "L2" },
-            { param: "SVM C", 'Linear Regression': "N/A", 'MLP': "N/A", 'Softmax Regression': "N/A", 'SVM': "5" }
+            { param: "Batch Size", 'Linear Regression': "128", 'MLP': "128", 'Softmax Regression': "128", 'SVM': "128", 'GRU-SVM': "128" },
+            { param: "Cell Size (Dense)", 'Linear Regression': "N/A", 'MLP': "[500, 500, 500]", 'Softmax Regression': "N/A", 'SVM': "N/A", 'GRU-SVM': "N/A" },
+            { param: "GRU Units", 'Linear Regression': "N/A", 'MLP': "N/A", 'Softmax Regression': "N/A", 'SVM': "N/A", 'GRU-SVM': "64" },
+            { param: "Epochs", 'Linear Regression': "3000", 'MLP': "3000", 'Softmax Regression': "3000", 'SVM': "3000", 'GRU-SVM': "3000" },
+            { param: "Learning Rate", 'Linear Regression': "1e-3", 'MLP': "1e-2", 'Softmax Regression': "1e-3", 'SVM': "1e-3", 'GRU-SVM': "1e-3" },
+            { param: "Norm", 'Linear Regression': "N/A", 'MLP': "N/A", 'Softmax Regression': "N/A", 'SVM': "L2", 'GRU-SVM': "N/A" },
+            { param: "SVM C", 'Linear Regression': "N/A", 'MLP': "N/A", 'Softmax Regression': "N/A", 'SVM': "5", 'GRU-SVM': "N/A" }
         ];
 
         function populateHyperparameterTable() {
             const tableBody = document.getElementById('hyperparameter-body');
-            const modelKeys = ['Linear Regression', 'MLP', 'Softmax Regression', 'SVM'];
+            const modelKeys = ['Linear Regression', 'MLP', 'Softmax Regression', 'SVM', 'GRU-SVM'];
 
             hyperparameterData.forEach(rowData => {
                 const row = document.createElement('tr');
@@ -139,6 +141,7 @@
                     
                     if (model === 'MLP') cell.classList.add('font-bold', 'bg-red-50');
                     if (model === 'SVM') cell.classList.add('font-bold', 'bg-blue-50');
+                    if (model === 'GRU-SVM') cell.classList.add('font-bold', 'bg-green-50');
                     
                     row.appendChild(cell);
                 });
