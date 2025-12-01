@@ -17,12 +17,10 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 app = Flask(__name__)
 
 # --- Global Configuration Variables ---
-# NOTE: We now support per-model scalers, so global SCALER is less critical 
-# but kept for models that might share one (like Linear/Softmax/MLP).
 SCALER = None 
 
 # --- MODELS CONFIGURATION ---
-# This dictionary defines all available models, their paths, types, and display names.
+# The 'is_mock_fallback' flag will be added during loading if the model file is missing.
 MODELS_CONFIG = {
     "linear_regression": {
         "name": "Linear Regression Classifier",
@@ -30,7 +28,7 @@ MODELS_CONFIG = {
         "metrics": "models/linear_regression_model_metrics.json",
         "instance": None,
         "type": "keras",
-        "scaler_path": "models/scaler.pkl" # Uses the standard scaler
+        "scaler_path": "models/scaler.pkl" 
     },
     "softmax_regression": {
         "name": "Softmax Regression Classifier",
@@ -48,14 +46,21 @@ MODELS_CONFIG = {
         "type": "keras",
         "scaler_path": "models/scaler.pkl"
     },
-    # NEW: Support Vector Machine (SVM) Configuration
     "svm_classifier": {
         "name": "Support Vector Machine (RBF)",
         "path": "models/train_svm_model.joblib", 
         "metrics": "models/svm_model_metrics.json",
         "instance": None,
         "type": "sklearn",
-        "scaler_path": "models/scaler_svm.joblib" # Uses its own dedicated scaler
+        "scaler_path": "models/scaler_svm.joblib" 
+    },
+    "gru_svm_classifier": {
+        "name": "GRU-SVM Classifier (Recurrent NN Hybrid)",
+        "path": "models/train_gru_svm_model.h5", 
+        "metrics": "models/gru_svm_model_metrics.json",
+        "instance": None,
+        "type": "keras",
+        "scaler_path": "models/scaler_gru.joblib" 
     }
 }
 
@@ -79,50 +84,52 @@ def load_assets():
     for model_key, config in MODELS_CONFIG.items():
         print(f"Loading {config['name']}...")
         
+        # Initialize flags
+        config['is_mock_fallback'] = False
+        
         # 1. Load Metrics (.json)
         if os.path.exists(config['metrics']):
             try:
                 with open(config['metrics'], 'r') as f:
                     config['metrics_data'] = json.load(f)
-                print(f"  - Metrics loaded.")
+                print(f"  - Metrics loaded.")
             except Exception as e:
-                print(f"  - ERROR loading metrics: {e}")
+                print(f"  - ERROR loading metrics: {e}")
                 config['metrics_data'] = {"model_name": config['name'], "metrics": {}}
         else:
-            print(f"  - WARNING: Metrics file not found at {config['metrics']}")
+            print(f"  - WARNING: Metrics file not found at {config['metrics']}")
             config['metrics_data'] = {"model_name": config['name'], "metrics": {}}
 
         # 2. Load Scaler (.pkl or .joblib)
-        # We store the loaded scaler instance directly in the config for this model
         if os.path.exists(config['scaler_path']):
             try:
-                if config['scaler_path'].endswith('.joblib'):
-                    config['scaler_instance'] = joblib.load(config['scaler_path'])
-                else:
-                    with open(config['scaler_path'], 'rb') as f:
-                        config['scaler_instance'] = pickle.load(f)
-                print(f"  - Scaler loaded.")
+                config['scaler_instance'] = joblib.load(config['scaler_path'])
+                print(f"  - Scaler loaded.")
             except Exception as e:
-                print(f"  - ERROR loading scaler: {e}")
+                print(f"  - ERROR loading scaler: {e}")
                 config['scaler_instance'] = None
         else:
-            print(f"  - ERROR: Scaler file not found at {config['scaler_path']}")
+            print(f"  - ERROR: Scaler file not found at {config['scaler_path']}")
             config['scaler_instance'] = None
 
         # 3. Load Model Instance (.h5 or .joblib)
         if os.path.exists(config['path']):
             try:
                 if config['type'] == 'keras':
+                    # load_model with compile=False for faster loading and avoids optimizer warnings
                     config['instance'] = tf.keras.models.load_model(config['path'], compile=False)
                 elif config['type'] == 'sklearn':
                     config['instance'] = joblib.load(config['path'])
-                print(f"  - Model instance loaded.")
+                print(f"  - Model instance loaded.")
             except Exception as e:
-                print(f"  - ERROR loading model: {e}")
-                config['instance'] = "MOCK"
+                print(f"  - ERROR loading model: {e}")
+                config['instance'] = None # Use None for missing instance
         else:
-            print(f"  - ERROR: Model file not found at {config['path']}")
-            config['instance'] = "MOCK"
+            print(f"  - ERROR: Model file not found at {config['path']}")
+            config['instance'] = None # Use None for missing instance
+            
+            # --- ANOMALY FIX: Set explicit mock flag when model file is missing ---
+            config['is_mock_fallback'] = True 
             
     return True 
 
@@ -156,10 +163,7 @@ def handle_prediction():
                 return f"Missing required feature: {feature}", 400
             input_data[feature] = value
         
-        # Convert to DataFrame (needed for scalers that expect DataFrame structure or feature names)
         data_df = pd.DataFrame([input_data])
-        
-        # List to store results from all models
         all_model_results = []
 
         # 2. Iterate through ALL Models and Predict
@@ -172,53 +176,65 @@ def handle_prediction():
             prediction_score = None
             prediction_class = None
             
-            # --- Pre-Check: Asset Availability ---
-            if not scaler_instance or not model_instance:
-                model_used_name += " (Error: Assets Missing)"
-                prediction_score = 0.5
-                prediction_class = 0 # Default Safe
-                # Logic to handle missing assets gracefully in loop
+            # --- Predication Flow Control ---
 
-            elif model_instance == "MOCK":
-                # Mock prediction logic
-                if data_df['radius_mean'].iloc[0] > 15:
-                    prediction_score = np.random.uniform(0.7, 0.9)
-                else:
-                    prediction_score = np.random.uniform(0.1, 0.3)
-                prediction_class = int(prediction_score > 0.5)
-                model_used_name += " (MOCK)"
-
-            else:
-                # --- A. Scale Input ---
-                # IMPORTANT: Use the specific scaler loaded for this model
+            # A. Check for ready-to-use assets
+            if model_instance and scaler_instance:
+                
+                # --- A1. Scale Input ---
                 try:
-                    # Transform expects 2D array. Keras models might be picky about DataFrames vs Arrays,
-                    # but StandardScaler handles both usually. Converting to values ensures consistency.
+                    # Transform expects 2D array.
                     input_scaled = scaler_instance.transform(data_df[FEATURE_NAMES].values)
                 except Exception as e:
-                     print(f"Scaling error for {model_key}: {e}")
-                     continue # Skip this model if scaling fails
+                    print(f"Scaling error for {model_key}: {e}")
+                    # Fall through to error state if scaling fails
+                    model_instance = None 
 
-                # --- B. Predict ---
-                if config['type'] == 'keras':
-                    # Keras Prediction
-                    prediction_raw = model_instance.predict(input_scaled, verbose=0).flatten()
-                    if model_instance.output_shape == (None, 2):
-                         prediction_score = float(prediction_raw[1]) # Softmax P(M)
+                # A2. If scaling succeeded, proceed with actual prediction
+                if model_instance:
+                    if config['type'] == 'keras':
+                        # Keras Prediction
+                        prediction_raw = model_instance.predict(input_scaled, verbose=0).flatten()
+                        if len(prediction_raw) == 2:
+                            # Softmax P(M) - [P(B), P(M)]
+                            prediction_score = float(prediction_raw[1]) 
+                        else:
+                            # Linear/MLP/GRU (Sigmoid Output) P(M)
+                            prediction_score = float(prediction_raw[0]) 
+                    
+                    elif config['type'] == 'sklearn':
+                        # Scikit-learn Prediction (SVM)
+                        if hasattr(model_instance, "predict_proba"):
+                            # Returns [[prob_0, prob_1]] -> We want prob_1 (Malignant)
+                            prediction_score = float(model_instance.predict_proba(input_scaled)[0][1])
+                        else:
+                            # Fallback if predict_proba is not available (e.g., specific SVM configs)
+                            prediction_class = int(model_instance.predict(input_scaled)[0])
+                            prediction_score = 1.0 if prediction_class == 1 else 0.0
+
+                    # Final prediction class derived from score (for non-softmax/non-proba models too)
+                    if prediction_score is not None:
+                        prediction_class = int(prediction_score > 0.5)
+
+
+            # B. Handle missing assets (using mock or default error)
+            if prediction_score is None:
+                # B1. Check for the specific case where the model file was missing (Mock Fallback)
+                if config.get('is_mock_fallback', False):
+                    # Mock prediction logic (uses raw input, not scaled)
+                    if data_df['radius_mean'].iloc[0] > 15:
+                        prediction_score = np.random.uniform(0.7, 0.9)
                     else:
-                         prediction_score = float(prediction_raw[0]) # Linear/MLP P(M)
+                        prediction_score = np.random.uniform(0.1, 0.3)
+                    prediction_class = int(prediction_score > 0.5)
+                    model_used_name += " (MOCK)"
                 
-                elif config['type'] == 'sklearn':
-                    # Scikit-learn Prediction (SVM)
-                    if hasattr(model_instance, "predict_proba"):
-                        # Returns [[prob_0, prob_1]] -> We want prob_1 (Malignant)
-                        prediction_score = float(model_instance.predict_proba(input_scaled)[0][1])
-                    else:
-                        # Fallback if predict_proba is not available (e.g., specific SVM configs)
-                        prediction_class = int(model_instance.predict(input_scaled)[0])
-                        prediction_score = 1.0 if prediction_class == 1 else 0.0
+                # B2. Default Error state (Scaler missing, or general prediction failure)
+                else:
+                    model_used_name += " (Error: Assets Missing)"
+                    prediction_score = 0.5
+                    prediction_class = 0 # Default Safe
 
-                prediction_class = int(prediction_score > 0.5)
 
             # Store the prediction result for this specific model
             all_model_results.append({
@@ -235,7 +251,7 @@ def handle_prediction():
             'inputs': input_data,
             'results': [
                 {
-                    'model_name': res['model_name'].replace(' (MOCK)', ''),
+                    'model_name': res['model_name'].replace(' (MOCK)', '').replace(' (Error: Assets Missing)', ''),
                     'score': res['prediction_score'],
                     'label': res['result_label'],
                     'metrics': res['metrics']
@@ -282,6 +298,7 @@ def download_report():
 
         # C. Metrics
         csv_output.append("\n--- Model Test Set Performance Metrics ---")
+        # Check if there are any metrics present in the first successful result entry
         if download_data['results'] and download_data['results'][0]['metrics']:
             metric_keys = list(download_data['results'][0]['metrics'].keys())
             csv_output.append("Model Name," + ",".join(metric_keys))
