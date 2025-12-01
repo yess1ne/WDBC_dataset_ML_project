@@ -56,11 +56,11 @@ MODELS_CONFIG = {
     },
     "gru_svm_classifier": {
         "name": "GRU-SVM Classifier (Recurrent NN Hybrid)",
-        "path": "models/train_gru_svm_model.h5", 
+        "path": "models/gru_feature_extractor.h5", 
         "metrics": "models/gru_svm_model_metrics.json",
         "instance": None,
         "type": "keras",
-        "scaler_path": "models/scaler_gru.joblib" 
+        "scaler_path": "models/scaler_gru_svm.joblib" 
     }
 }
 
