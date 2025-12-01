@@ -1,0 +1,25 @@
+{
+  "model_name": "GRU-SVM Hybrid Classifier",
+  "metrics": {
+    "Accuracy": 0.9064,
+    "AUC (ROC Area)": 0.9663,
+    "Precision (PPV)": 0.875,
+    "F1 Score": 0.875,
+    "FPR (False Positive Rate)": 0.0748,
+    "FNR (False Negative Rate)": 0.125,
+    "TPR (True Positive Rate / Sensitivity)": 0.875,
+    "TNR (True Negative Rate / Specificity)": 0.9252,
+    "Test Set Size": 171
+  },
+  "hyperparameters": {
+    "GRU_units": 100,
+    "Dense_layer_size": 30,
+    "GRU_epochs": 100,
+    "learning_rate": 0.001,
+    "batch_size": 128,
+    "SVM_C": 5,
+    "SVM_kernel": "rbf",
+    "SVM_max_iter": 3000,
+    "random_state": 42
+  }
+}
